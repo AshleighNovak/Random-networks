@@ -1,0 +1,73 @@
+---
+title: "Random-networks"
+author: "Ashleigh Novak"
+date: "3/7/2021"
+output: html_document
+---
+
+Methods are used in:
+
+1) Novak, A. J., Becker, S. L., Finn, J. T., Danylchuk, A. J., Pollock, C. G., Hillis-Starr, Z., Jordaan, A. 2020. Inferring residency and movement patterns of horse-eye jack Caranx latus in relation to a Caribbean marine protected area acoustic telemetry array. Animal Biotelemetry. 8:12. https://doi.org/10.1186/s40317-020-00199-8
+
+2) Novak, A. J., Becker, S. L., Finn, J. T., Pollock, C. G., Hillis-Starr, Z., Jordaan, A. 2020. Scale of biotelemetry data influences ecological interpretations of space and habitat use in yellowtail snapper Ocyurus chrysurus. Marine and Coastal Fisheries: Dynamics, Management, and Ecosystem Science 12:364–377.
+
+Code to generate random networks. Note, this was done for each fish.
+
+```{r}
+#Set up your empty dataframe
+RandomStatsFISHID = data.frame(ID = 1:10000,
+                     DegreeCount = NA,
+                     ClosenessCount = NA,
+                     BetweenCount = NA)
+
+#Set # of random networks to be generated
+n=10000
+
+#Loop to fill in empty data frame with random data
+# 78 is the number of receivers the fish could have possibly visited
+# 23616 is the number of filtered detections for this fish
+
+for (i in 1:n) {
+  MySequence = sample(1:78, size = 23616, replace = T)
+  #glimpse(MySequence)
+  MySeqLag = MySequence[2:23616]
+  #glimpse(MySeqLag)
+  RandFromToDF2 = data.frame(From=MySequence[1:23615], To=MySeqLag)
+  MyTable2 = table(From=RandFromToDF2$From, To = RandFromToDF2$To)
+  EL_SuperRandom = MoveEdgeList.nm.nz(MyTable2)
+  EL_SuperRandom$weight = as.numeric(EL_SuperRandom$weight)
+  RandomMovementGraph23593 = graph.data.frame(EL_SuperRandom, directed = T)
+   #plot(RandomMovementGraph23593)
+   #is.igraph(RandomMovementGraph23593)
+  RandomStatsFISHID$DegreeCount[i] = centralization.degree(RandomMovementGraph23593)$centralization
+  RandomStatsFISHID$ClosenessCount[i] = centralization.closeness(RandomMovementGraph23593)$centralization
+  RandomStatsFISHID$BetweenCount[i] = centralization.betweenness(RandomMovementGraph23593)$centralization
+}
+```
+
+#Test significance of your random network against the fish's
+
+```{r}
+
+hist(RandomStatsFISHID$DegreeCount, xlim = c(0,0.45))
+range(RandomStatsFISHID$DegreeCount) 
+
+#MovegraphFISHID is the movement graph or network (I created mine using the package igraph) for the fish 
+value = centralization.degree(MovegraphFISHID)$centralization 
+abline(v=(centralization.degree(MovegraphFISHID)$centralization), col="red", lwd=3)
+
+#Coefficient of variation
+
+#Random
+mean(RandomStatsFISHID$DegreeCount) 
+sd(RandomStatsFISHID$DegreeCount) 
+
+# Test for significance!
+wilcox.test(RandomStatsFISHID$DegreeCount, mu = X , alternative = "two.sided")
+#where X is the number specifying an optional parameter used to form the null hypothesis
+
+#Real
+value = centralization.degree(MovegraphFISHID)$centralization 
+quantile(RandomStatsFISHID$DegreeCount, probs = c(0.975))
+```
+
